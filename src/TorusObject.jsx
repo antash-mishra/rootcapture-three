@@ -1,10 +1,74 @@
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
 import { useMemo } from 'react';
-import { OrbitControls } from '@react-three/drei'
+import { OrbitControls, QuadraticBezierLine, Edges, Float, Text} from '@react-three/drei'
+
+const CurvedLine = ({ startPoint, angle, length = 0.5, color }) => {
+    const points = useMemo(() => {
+    // Start point is where the line connects to the ring
+    const start = new THREE.Vector3(startPoint.x, startPoint.y, startPoint.z);
+    
+        // End point is extended outward at an angle (on the same plane as ring)
+        const end = new THREE.Vector3(
+            startPoint.x + Math.cos(angle) * length * 1.5,
+            startPoint.y + Math.sin(angle) * length * 1.5,
+            startPoint.z
+        );
+    
+        // Control point for the quadratic curve
+        const control = new THREE.Vector3(
+            startPoint.x + Math.cos(angle) * length * 0.8,
+            startPoint.y + Math.sin(angle) * length * 0.8,
+            startPoint.z + length * 0.5 // Lift only the control point for curve shape
+        );
+
+        return {
+            start,
+            end,
+            control
+        };
+    }, [startPoint, angle, length]);
+  
+    return (
+        <group>
+            <QuadraticBezierLine
+              start={points.start}
+              end={points.end}
+              control={points.control}
+              color={color}
+              lineWidth={2}
+              dashed={false}
+            />
+            <mesh position={points.end}>
+                <capsuleGeometry args={[0.05, 0.1, 4, 8]} />
+                <meshBasicMaterial 
+                    color={color}
+                    metalness={0.8}
+                    roughness={0.5}
+                />
+            </mesh>
+            {/* Text label */}
+            <Text
+                position={[
+                    points.end.x + Math.cos(angle) * 0.15, // Offset from capsule
+                    points.end.y + Math.sin(angle) * 0.15,
+                    points.end.z
+                ]}
+                // rotation={[-Math.PI / 2, 0, -angle]} // Align with view
+                fontSize={0.15}
+                color={color}
+                anchorX="center"
+                anchorY="middle"
+            >
+                {`100%`}
+            </Text>
+        </group>
+    );
+};
+
 
 class SquareRingGeometry extends THREE.BufferGeometry {
-    constructor(radius = 2, thickness = 0.4, segments = 64, progress = 0.6, startAngle = 0, arcLength) {
+    constructor(radius = 2, thickness = 0.4, segments = 128, progress = 0.6, startAngle = 0, arcLength) {
       super();
       
       const vertices = [];
@@ -59,102 +123,112 @@ class SquareRingGeometry extends THREE.BufferGeometry {
       this.setIndex(indices);
       this.computeVertexNormals();
     }
-  }
-  
-  
+}
 
-  const ProgressRing = ({
+const ProgressRing = ({
     radius = 1,
     thickness = 0.3,
-    segments = 64,
+    segments = 128,
+    noOfSegments = 2,
     firstSegmentColor = '#8a2be2',
     secondSegmentColor = '#404040',
-    gap = 0.15 // Gap in radians between segments
+    segmentData = [
+        { progress: 0.8, color: '#8a2be2' }, // Purple - 30%
+        { progress: 0.2, color: '#404040' }, // Gray - 30%
+        
+    ],
+    gap = 0.10 // Gap in radians between segments
   }) => {
-    const { firstGeometry, secondGeometry, thirdGeometry } = useMemo(() => {
+    const segmentGeometries = useMemo(() => {
       
-        // Calculate total available angle (full circle minus two gaps)
-      const totalAvailableAngle = Math.PI * 2 - (gap * 3);
-      
-      // Calculate segment angles based on 60/40 split of available angle
-      const firstSegmentAngle = totalAvailableAngle * 0.3;
-      const secondSegmentAngle = totalAvailableAngle * 0.5;
-      const thirdSegmentAngle = totalAvailableAngle * 0.2;
-      // First segment starts after first gap
-      const firstStartAngle = gap;
-      // Second segment starts after first segment plus second gap
-      const secondStartAngle = firstStartAngle + firstSegmentAngle + gap;
-      const thirdStartAngle = secondStartAngle + secondSegmentAngle + gap;
-      return {
-        firstGeometry: new SquareRingGeometry(
-          radius, 
-          thickness, 
-          segments, 
-          0.3, 
-          firstStartAngle, 
-          firstSegmentAngle
-        ),
-        secondGeometry: new SquareRingGeometry(
-          radius, 
-          thickness, 
-          segments, 
-          0.5, 
-          secondStartAngle, 
-          secondSegmentAngle
-        ),
-        thirdGeometry: new SquareRingGeometry(
-            radius, 
-            thickness, 
-            segments, 
-            0.2, 
-            thirdStartAngle, 
-            thirdSegmentAngle
-          )
-      };
+        // Calculate total available angle (full circle minus `noOfSegments` gaps)
+        const totalAvailableAngle = Math.PI * 2 - (gap * noOfSegments);
+        const portions = [];
+        const points = [];
+        // Calculate segment angles based on progress split of available angle
+        let startAngle = gap
+        for (let i = 0; i < noOfSegments; i++) {
+            const segmentAngle = totalAvailableAngle * segmentData[i].progress;
+            
+            console.log(`Segment ${i + 1}: Start Angle = ${startAngle}, Segment Angle = ${segmentAngle}`);
+        
+            const geometry = new SquareRingGeometry(
+                radius, 
+                thickness, 
+                segments, 
+                segmentData[i].progress, 
+                startAngle, 
+                segmentAngle
+            );
+
+            // Calculate center point of the segment
+            const centerAngle = startAngle + (segmentAngle / 2);
+            const centerPoint = new THREE.Vector3(
+                (radius + thickness/2) * Math.cos(centerAngle),
+                (radius + thickness/2) * Math.sin(centerAngle),
+                0+thickness/2
+            );
+
+            const segment = {
+                geometry: geometry,
+                color: segmentData[i].color
+            }
+            portions.push(segment);
+
+            points.push({
+                point: centerPoint,
+                angle: centerAngle,
+                color: segmentData[i].color
+            });
+            
+            startAngle += segmentAngle + gap;
+        }
+        return {
+            portions: portions,
+            points: points
+        };
     }, [radius, thickness, segments, gap]);
   
     return (
       <group rotation={[-Math.PI / 2, 0, 0]}>
-        <OrbitControls enableZoom={true}/>
-        <mesh geometry={firstGeometry}>
-          <meshBasicMaterial
-            side={THREE.DoubleSide}
-            color={"#ff4040"}
-            metalness={0.8}
-            roughness={0.5}
-          />
-        </mesh>
         
-        <mesh geometry={secondGeometry}>
-          <meshBasicMaterial
-            side={THREE.DoubleSide}
-            color={"#404040"}
-            metalness={0.8}
-            roughness={0.5}
-          />
-        </mesh>
-
-        <mesh geometry={thirdGeometry}>
-            <meshBasicMaterial
-                side={THREE.DoubleSide}
-                color={"#8a2be2"}
-                metalness={0.8}
-                roughness={0.5}
+        <OrbitControls enableZoom={true}/>
+        {segmentGeometries.portions.map((segment, index) => (
+            <mesh key={index} geometry={segment.geometry}>
+                {/* <Edges color="#a03ed6" /> */}
+                <meshBasicMaterial
+                    side={THREE.DoubleSide}
+                    color={segment.color}
+                    metalness={0.75}
+                    roughness={0.65}
+                    wireframe={false}
+                />
+            </mesh>
+        ))}
+        {segmentGeometries.points.map((point, index) => (
+            <CurvedLine
+                key={`line-${index}`}
+                startPoint={point.point}
+                angle={point.angle}
+                length={0.5}
+                color={point.color}
             />
-        </mesh>
+        ))}
       </group>
     );
-  };
+};
   
-  // Main Scene Component
-  const Scene = () => {
+// Scene Component
+const Scene = () => {
     return (
       <>
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
-        <ProgressRing />
+        <Float scale={0.75} position={[0, 0.65, 0]} rotation={[0, 0.6, 0]}>
+            <ProgressRing />
+        </Float>
       </>
     );
-  };
+};
   
-  export default Scene;
+export default Scene;
