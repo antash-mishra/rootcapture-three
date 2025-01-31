@@ -1,14 +1,16 @@
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
-import { useMemo, useState, useCallback, useEffect } from 'react';
-import { OrbitControls, QuadraticBezierLine, Edges, Float, Text} from '@react-three/drei'
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
+import { OrbitControls, TransformControls, QuadraticBezierLine, Edges, Float, Text} from '@react-three/drei'
 import { useControls, button, useStoreContext, folder } from 'leva';
 
-const CurvedLine = ({ startPoint, angle, length = 0.5, color }) => {
+const CurvedLine = ({ startPoint, angle, length = 0.5, color, progress, text }) => {
+    const textAreaRef = useRef()
+
     const points = useMemo(() => {
-    // Start point is where the line connects to the ring
-    const start = new THREE.Vector3(startPoint.x, startPoint.y, startPoint.z);
-    
+        // Start point is where the line connects to the ring
+        const start = new THREE.Vector3(startPoint.x, startPoint.y, startPoint.z);
+        
         // End point is extended outward at an angle (on the same plane as ring)
         const end = new THREE.Vector3(
             startPoint.x + Math.cos(angle) * length * 1.5,
@@ -33,36 +35,43 @@ const CurvedLine = ({ startPoint, angle, length = 0.5, color }) => {
     return (
         <group>
             <QuadraticBezierLine
-              start={points.start}
-              end={points.end}
-              control={points.control}
-              color={color}
-              lineWidth={2}
-              dashed={false}
-            />
-            <mesh position={points.end}>
-                <capsuleGeometry args={[0.06, 0.3, 12, 12]} />
-                <meshBasicMaterial 
-                    color={color}
-                    metalness={0.8}
-                    roughness={0.5}
-                />
-            </mesh>
-            {/* Text label
-            <Text
-                position={[
-                    points.end.x + Math.cos(angle) * 0.15, // Offset from capsule
-                    points.end.y + Math.sin(angle) * 0.15,
-                    points.end.z
-                ]}
-                // rotation={[-Math.PI / 2, 0, -angle]} // Align with view
-                fontSize={0.15}
+                start={points.start}
+                end={points.end}
+                control={points.control}
                 color={color}
-                anchorX="center"
-                anchorY="middle"
-            >
-                {`100%`}
-            </Text> */}
+                lineWidth={2}
+                dashed={false}
+            />
+            
+            {/* Group mesh and text together */}
+            <group position={points.end} ref={textAreaRef}>
+                {/* Mesh as parent */}
+                {/* Adding a helper function to check axis */}
+                <mesh rotation = {[0, 0, 0]} position={[0.00, 0, 0.012]} >
+                    <planeGeometry args={[0.1, 0.35, 64, 64]} />
+                    <meshBasicMaterial 
+                        color={color}
+                        metalness={0.8}
+                        roughness={0.5}
+                        side={THREE.DoubleSide}
+                    />
+                </mesh>
+                {/* <TransformControls object={textAreaRef} /> */}
+                {/* </TransformControls> */}
+                {/* Text as child, positioned relative to the mesh */}
+                <Text
+                    position={[0.0, 0.0, 0.014]} // Adjust to place text slightly above
+                    rotation={[0, 0, -Math.PI/2]}
+                    fontSize={0.05}
+                    fontWeight={500}
+                    fontFamily={"Inter"}
+                    color={"white"}
+                    anchorX="center"
+                    anchorY="middle"
+                >
+                    {progress*100}% {text}
+                </Text>
+            </group>
         </group>
     );
 };
@@ -174,10 +183,10 @@ const ProgressRing = ({
     firstSegmentColor = '#8a2be2',  // Default color for first segment
     secondSegmentColor = '#404040',  // Default color for second segment
     segmentData = [
-        { progress: 0.75, color: '#67129b' }, // First segment: 75% of circle
-        { progress: 0.25, color: '#3d4148' }, // Second segment: 25% of circle
+        { progress: 0.75, color: '#67129b', text: 'JSX'}, // First segment: 75% of circle
+        { progress: 0.25, color: '#3d4148', text: 'CSS'}, // Second segment: 25% of circle
     ],
-    gap = 0.03  // Physical gap size between segments
+    gap = 0.04  // Physical gap size between segments
 }) => {
     const segmentGeometries = useMemo(() => {
         // Calculate outer and inner radii based on base radius and thickness
@@ -208,10 +217,10 @@ const ProgressRing = ({
         for (let i = 0; i < noOfSegments; i++) {
             // Calculate angle for this segment based on its progress percentage
             const segmentAngle = totalAvailableAngle * segmentData[i].progress;
-    
+            const newRadius = radius + ((Math.random() - 0.5) * 0.40);
             // Create the geometry for this segment
             const geometry = new SquareRingGeometry(
-                radius + ((Math.random() - 0.5) * 0.25), 
+                newRadius, 
                 radialThickness, 
                 height, 
                 segments, 
@@ -223,8 +232,8 @@ const ProgressRing = ({
             // Calculate the center point for curved lines and labels
             const centerAngle = startAngle + (segmentAngle / 2);
             const centerPoint = new THREE.Vector3(
-                (radius + radialThickness/2) * Math.cos(centerAngle),
-                (radius + radialThickness/2) * Math.sin(centerAngle),
+                (newRadius + radialThickness/2) * Math.cos(centerAngle),
+                (newRadius + radialThickness/2) * Math.sin(centerAngle),
                 height / 2
             );
     
@@ -238,7 +247,9 @@ const ProgressRing = ({
             points.push({
                 point: centerPoint,
                 angle: centerAngle,
-                color: segmentData[i].color
+                color: segmentData[i].color,
+                progress: segmentData[i].progress,
+                text: segmentData[i].text
             });
     
             // Move to next segment start position
@@ -255,7 +266,7 @@ const ProgressRing = ({
         
         {/* Render ring segments */}
         {segmentGeometries.portions.map((segment, index) => (
-            <mesh key={index} geometry={segment.geometry}>
+            <mesh key={index} geometry={segment.geometry} >
                 <meshStandardMaterial
                     side={THREE.DoubleSide}
                     color={segment.color}
@@ -274,33 +285,27 @@ const ProgressRing = ({
                 angle={point.angle}
                 length={0.5}
                 color={point.color}
+                progress={point.progress}
+                text={point.text}
             />
         ))}
       </group>
     );
 };
 
-
-const generateRandomColor = () => {
-    return '#' + Math.floor(Math.random()*16777215).toString(16);
-};
-
-const generateRandomProgress = (segments) => {
-    const rawValues = Array(segments).fill(0).map(() => Math.random());
-    const total = rawValues.reduce((sum, val) => sum + val, 0);
-    return rawValues.map(val => val / total);
-};
-
-
 // Scene Component
 const Scene = () => {
     const [segmentData, setSegmentData] = useState([
-        { progress: 0.3, color: '#8a2be2' },
-        { progress: 0.3, color: '#404040' },
-        { progress: 0.2, color: '#ff4040' },
-        { progress: 0.2, color: '#8a129b' },
+        { progress: 0.3, color: '#8a2be2', text: 'JSX'},
+        { progress: 0.3, color: '#404040', text: 'CSS'},
+        { progress: 0.2, color: '#ff4040', text: 'HTML'},
+        { progress: 0.2, color: '#8a129b', text: 'React'},
         // { progress: 0.2, color: '#ff4040' }
     ]);
+
+    const objRef = useRef();
+
+    console.log(objRef);
 
     const numberOfSegments = segmentData.length;
 
@@ -310,13 +315,14 @@ const Scene = () => {
         <ambientLight intensity={1.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
         <Float scale={0.75} position={[0, 0.65, 0]} rotation={[0, 0.6, 0]}>
-        <ProgressRing 
-                segmentData={segmentData}
-                noOfSegments={numberOfSegments}
-            />
+            <group ref={objRef} rotation={[0, Math.PI/2, Math.PI/2]} position={[0, 0, 0]}>
+                <ProgressRing 
+                    segmentData={segmentData}
+                    noOfSegments={numberOfSegments}
+                />
+            </group>
         </Float>
       </>
-    );
+    )
 };
-  
 export default Scene;
