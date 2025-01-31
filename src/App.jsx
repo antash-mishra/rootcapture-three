@@ -2,7 +2,7 @@ import { useState } from 'react'
 import './App.css'
 import { Canvas } from '@react-three/fiber';
 import Experience from './Experience';
-import Scene from './TorusObject';
+import Scene from './TorusMultipleObject';
 
 function App() {
   
@@ -15,6 +15,9 @@ function App() {
         fov: 45,
       }}
     >
+      <directionalLight position={[3, 3, 3]} intensity={1.5} castShadow />
+      <ambientLight intensity={0.3} />
+
       
       <Scene />
       

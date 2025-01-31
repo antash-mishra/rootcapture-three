@@ -69,7 +69,7 @@ const CurvedLine = ({ startPoint, angle, length = 0.5, color }) => {
 
 
 class SquareRingGeometry extends THREE.BufferGeometry {
-    constructor(radius = 2, thickness = 0.4, segments = 128, progress = 0.6, startAngle = 0, arcLength, edgeSegments = 128) {
+    constructor(radius = 2, radialThickness = 1.0, height = 0.3, segments = 128, progress = 0.6, startAngle = 0, arcLength, edgeSegments = 128) {
         super();
         
         const vertices = [];
@@ -89,9 +89,9 @@ class SquareRingGeometry extends THREE.BufferGeometry {
             const cos = Math.cos(angle);
             const sin = Math.sin(angle);
             
-            const cornerRadius = thickness * 0.1; // Size of rounded corners
-            const innerRadius = radius - thickness/2;
-            const outerRadius = radius + thickness/2;
+            const cornerRadius = radialThickness * 0.1; // Size of rounded corners
+            const innerRadius = radius - radialThickness/2;
+            const outerRadius = radius + radialThickness/2;
             
             // Create points for each edge of the cross-section
             const edgePoints = [];
@@ -106,27 +106,27 @@ class SquareRingGeometry extends THREE.BufferGeometry {
                     let point;
                     if (edge === 0) { // Top edge
                         point = [
-                            (innerRadius + thickness * t) * cos,
-                            (innerRadius + thickness * t) * sin,
-                            thickness/2
+                            (innerRadius + radialThickness * t) * cos,
+                            (innerRadius + radialThickness * t) * sin,
+                            height/2
                         ];
                     } else if (edge === 1) { // Right edge
                         point = [
                             outerRadius * cos,
                             outerRadius * sin,
-                            thickness/2 - thickness * t
+                            height/2 - height * t
                         ];
                     } else if (edge === 2) { // Bottom edge
                         point = [
-                            (outerRadius - thickness * t) * cos,
-                            (outerRadius - thickness * t) * sin,
-                            -thickness/2
+                            (outerRadius - radialThickness * t) * cos,
+                            (outerRadius - radialThickness * t) * sin,
+                            -height/2
                         ];
                     } else { // Left edge
                         point = [
                             innerRadius * cos,
                             innerRadius * sin,
-                            -thickness/2 + thickness * t
+                            -height/2 + height * t
                         ];
                     }
                     
@@ -164,78 +164,98 @@ class SquareRingGeometry extends THREE.BufferGeometry {
     }
 }
 
+
 const ProgressRing = ({
-    radius = 0.75,
-    thickness = 0.3,
-    segments = 264,
-    noOfSegments = 2,
-    firstSegmentColor = '#8a2be2',
-    secondSegmentColor = '#404040',
+    radius = 0.75,          // Base radius of the ring
+    radialThickness = 0.6,  // Thickness from inner to outer radius
+    height = 0.2,           // Height/depth of the ring
+    segments = 264,         // Number of segments for smooth curves
+    noOfSegments = 2,       // Number of ring segments (pieces)
+    firstSegmentColor = '#8a2be2',  // Default color for first segment
+    secondSegmentColor = '#404040',  // Default color for second segment
     segmentData = [
-        { progress: 0.75, color: '#67129b' }, // Purple - 30%
-        { progress: 0.25, color: '#3d4148' }, // Gray - 30%
-        
+        { progress: 0.75, color: '#67129b' }, // First segment: 75% of circle
+        { progress: 0.25, color: '#3d4148' }, // Second segment: 25% of circle
     ],
-    gap = 0.10 // Gap in radians between segments
-  }) => {
+    gap = 0.03  // Physical gap size between segments
+}) => {
     const segmentGeometries = useMemo(() => {
-      
-        // Calculate total available angle (full circle minus `noOfSegments` gaps)
-        const totalAvailableAngle = Math.PI * 2 - (gap * noOfSegments);
-        const portions = [];
-        const points = [];
-        // Calculate segment angles based on progress split of available angle
-        let startAngle = gap
-        for (let i = 0; i < noOfSegments; i++) {
-            const segmentAngle = totalAvailableAngle * segmentData[i].progress;
-            
-            console.log(`Segment ${i + 1}: Start Angle = ${startAngle}, Segment Angle = ${segmentAngle}`);
+        // Calculate outer and inner radii based on base radius and thickness
+        const outerRadius = radius + radialThickness / 2;
+        const innerRadius = radius - radialThickness / 2;
         
+        // Calculate the desired physical gap length at the outer radius
+        // This ensures consistent gap appearance
+        const desiredGapArcLength = gap * outerRadius;
+        
+        // Convert the physical gap length to angles at both radii
+        // Different radii require different angles for the same arc length
+        const gapOuter = desiredGapArcLength / outerRadius;  // Angle at outer radius
+        const gapInner = desiredGapArcLength / innerRadius;  // Angle at inner radius
+        
+        // Use average of inner and outer angles for a balanced gap
+        const adjustedGap = (gapOuter + gapInner) / 2;
+    
+        // Calculate total angle available for segments after subtracting gaps
+        const totalAvailableAngle = Math.PI * 2 - (adjustedGap * noOfSegments);
+        const portions = [];  // Store geometry and color for each segment
+        const points = [];    // Store points for curved lines and labels
+    
+        // Start first segment after a gap
+        let startAngle = adjustedGap;
+        
+        // Create geometry for each segment
+        for (let i = 0; i < noOfSegments; i++) {
+            // Calculate angle for this segment based on its progress percentage
+            const segmentAngle = totalAvailableAngle * segmentData[i].progress;
+    
+            // Create the geometry for this segment
             const geometry = new SquareRingGeometry(
-                radius, 
-                thickness, 
+                radius + ((Math.random() - 0.5) * 0.25), 
+                radialThickness, 
+                height, 
                 segments, 
                 segmentData[i].progress, 
                 startAngle, 
                 segmentAngle
             );
-
-            // Calculate center point of the segment
+    
+            // Calculate the center point for curved lines and labels
             const centerAngle = startAngle + (segmentAngle / 2);
             const centerPoint = new THREE.Vector3(
-                (radius + thickness/2) * Math.cos(centerAngle),
-                (radius + thickness/2) * Math.sin(centerAngle),
-                0+thickness/2
+                (radius + radialThickness/2) * Math.cos(centerAngle),
+                (radius + radialThickness/2) * Math.sin(centerAngle),
+                height / 2
             );
-
-            const segment = {
+    
+            // Store segment geometry and color
+            portions.push({
                 geometry: geometry,
                 color: segmentData[i].color
-            }
-            portions.push(segment);
-
+            });
+    
+            // Store points for curved lines
             points.push({
                 point: centerPoint,
                 angle: centerAngle,
                 color: segmentData[i].color
             });
-            
-            startAngle += segmentAngle + gap;
-        }
-        return {
-            portions: portions,
-            points: points
-        };
-    }, [radius, thickness, segments, gap]);
-  
-    return (
     
-      <group rotation={[-Math.PI / 2, 0, 0]}>
-
+            // Move to next segment start position
+            startAngle += segmentAngle + adjustedGap;
+        }
+    
+        return { portions, points };
+    }, [radius, radialThickness, height, segments, gap]); // Dependencies for memoization
+    
+    // Render the ring segments and curved lines
+    return (
+      <group rotation={[-Math.PI / 2, 0, 0]}>  {/* Rotate to lay flat */}
         <OrbitControls enableZoom={true}/>
+        
+        {/* Render ring segments */}
         {segmentGeometries.portions.map((segment, index) => (
             <mesh key={index} geometry={segment.geometry}>
-                {/* <Edges color="#a03ed6" /> */}
                 <meshStandardMaterial
                     side={THREE.DoubleSide}
                     color={segment.color}
@@ -245,6 +265,8 @@ const ProgressRing = ({
                 />
             </mesh>
         ))}
+        
+        {/* Render curved lines and labels */}
         {segmentGeometries.points.map((point, index) => (
             <CurvedLine
                 key={`line-${index}`}
@@ -257,7 +279,8 @@ const ProgressRing = ({
       </group>
     );
 };
-  
+
+
 const generateRandomColor = () => {
     return '#' + Math.floor(Math.random()*16777215).toString(16);
 };
@@ -272,9 +295,10 @@ const generateRandomProgress = (segments) => {
 // Scene Component
 const Scene = () => {
     const [segmentData, setSegmentData] = useState([
-        { progress: 0.4, color: '#8a2be2' },
-        { progress: 0.4, color: '#404040' },
+        { progress: 0.3, color: '#8a2be2' },
+        { progress: 0.3, color: '#404040' },
         { progress: 0.2, color: '#ff4040' },
+        { progress: 0.2, color: '#8a129b' },
         // { progress: 0.2, color: '#ff4040' }
     ]);
 
