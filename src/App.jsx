@@ -3,6 +3,7 @@ import './App.css'
 import { Canvas } from '@react-three/fiber';
 import Experience from './Experience';
 import Scene from './TorusMultipleObject';
+import Taskbar from './taskbar';
 
 function App() {
 
@@ -27,7 +28,7 @@ function App() {
     >
       <directionalLight position={[3, 3, 3]} intensity={1.5} castShadow />
       <ambientLight intensity={0.3} />
-
+      <Taskbar />
       <Scene />
       
       {/* Optional: Add controls if you want to interact with the scene */}

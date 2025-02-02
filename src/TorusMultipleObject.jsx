@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { Canvas } from '@react-three/fiber';
-import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { OrbitControls, TransformControls, QuadraticBezierLine, Edges, Float, Text} from '@react-three/drei'
-import { useControls, button, useStoreContext, folder } from 'leva';
+import { useMemo, useState, useRef } from 'react';
+import { OrbitControls, TransformControls, QuadraticBezierLine, Edges, Float, Text, Line} from '@react-three/drei'
+import MainCurvedLines from './curveline';
+// import { useControls, button, useStoreContext, folder } from 'leva';
 
 const CurvedLine = ({ startPoint, angle, length = 0.5, color, progress, text }) => {
     const textAreaRef = useRef()
@@ -217,7 +217,8 @@ const ProgressRing = ({
         for (let i = 0; i < noOfSegments; i++) {
             // Calculate angle for this segment based on its progress percentage
             const segmentAngle = totalAvailableAngle * segmentData[i].progress;
-            const newRadius = radius + ((Math.random() - 0.5) * 0.40);
+
+            const newRadius = radius + ((Math.random() - 0.5) * 0.10);
             // Create the geometry for this segment
             const geometry = new SquareRingGeometry(
                 newRadius, 
@@ -310,19 +311,27 @@ const Scene = () => {
     const numberOfSegments = segmentData.length;
 
     return (
-      <>
+    <>
         <directionalLight position={[1,2,3]} intensity={4.5}/>
         <ambientLight intensity={1.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
-        <Float scale={0.75} position={[0, 0.65, 0]} rotation={[0, 0.6, 0]}>
+        <group>
+            <MainCurvedLines />
+        </group>
+        <group position={[0, 0, 0]} rotation={[0, Math.PI, 0]}>
+            <MainCurvedLines />
+        </group>
+        
+        {/* <Float scale={0.75} position={[0, 0.65, 0]} rotation={[0, 0.6, 0]}> */}
             <group ref={objRef} rotation={[0, Math.PI/2, Math.PI/2]} position={[0, 0, 0]}>
                 <ProgressRing 
                     segmentData={segmentData}
                     noOfSegments={numberOfSegments}
                 />
             </group>
-        </Float>
-      </>
+            {/* <TransformControls object={objRef} /> */}
+        {/* </Float> */}
+    </>
     )
 };
 export default Scene;
