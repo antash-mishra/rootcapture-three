@@ -56,8 +56,7 @@ export default function MainCurvedLines() {
 
 
 // Server URL: wss://livekit.corrodedlabs.com
-// API Key: API87ki5zigJT5A
-// API Secret: 9aBit7TZRk9Vw3Ldz1odkfhYCn6soaanCjZvtTVqlSG
-
-// Here's a test token generated with your keys: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzQ0OTM5NzcsImlzcyI6IkFQSTg3a2k1emlnSlQ1QSIsIm5hbWUiOiJUZXN0IFVzZXIiLCJuYmYiOjE3Mzg0OTM5NzcsInN1YiI6InRlc3QtdXNlciIsInZpZGVvIjp7InJvb20iOiJteS1maXJzdC1yb29tIiwicm9vbUpvaW4iOnRydWV9fQ.1H94VZBkAEx1HvI2zMv9SVH6C52dBb-8aHDJUlZ4MiA
-
+// API Key: APIFz4zJabyCdnY
+// API Secret: k72Dc8d41SsYRChA06C4a8u3XuqztLrmrYwU3XlmQGD
+// 
+// Here's a test token generated with your keys: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzQ0OTU4MjEsImlzcyI6IkFQSUZ6NHpKYWJ5Q2RuWSIsIm5hbWUiOiJUZXN0IFVzZXIiLCJuYmYiOjE3Mzg0OTU4MjEsInN1YiI6InRlc3QtdXNlciIsInZpZGVvIjp7InJvb20iOiJteS1maXJzdC1yb29tIiwicm9vbUpvaW4iOnRydWV9fQ.aCha4o_rsJfExNTZv_WjnPFwIFW67daGL2RgzvTXdMo

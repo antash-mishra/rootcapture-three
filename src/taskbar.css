@@ -1,9 +1,0 @@
-.label > div {
-    position: absolute;
-    white-space: nowrap;
-    overflow: hidden;
-    color: black;
-    font-size: 40px;
-    font-weight: bold;
-    font-family: Arial;
-}
