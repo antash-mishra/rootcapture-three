@@ -1,7 +1,10 @@
 import * as THREE from 'three';
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { OrbitControls, TransformControls, QuadraticBezierLine, Edges, Float, Text, Line} from '@react-three/drei'
 import MainCurvedLines from './curveline';
+import { useSpring, animated, config } from '@react-spring/three';
+
 // import { useControls, button, useStoreContext, folder } from 'leva';
 
 const CurvedLine = ({ startPoint, angle, length = 0.5, color, progress, text }) => {
@@ -48,7 +51,7 @@ const CurvedLine = ({ startPoint, angle, length = 0.5, color, progress, text }) 
                 {/* Mesh as parent */}
                 {/* Adding a helper function to check axis */}
                 <mesh rotation = {[0, 0, 0]} position={[0.00, 0, 0.012]} >
-                    <planeGeometry args={[0.1, 0.35, 64, 64]} />
+                    <planeGeometry args={[0.15, 0.42, 64, 64]} />
                     <meshBasicMaterial 
                         color={color}
                         metalness={0.8}
@@ -62,7 +65,7 @@ const CurvedLine = ({ startPoint, angle, length = 0.5, color, progress, text }) 
                 <Text
                     position={[0.0, 0.0, 0.014]} // Adjust to place text slightly above
                     rotation={[0, 0, -Math.PI/2]}
-                    fontSize={0.05}
+                    fontSize={0.08}
                     fontWeight={500}
                     fontFamily={"Inter"}
                     color={"white"}
@@ -188,6 +191,13 @@ const ProgressRing = ({
     ],
     gap = 0.04  // Physical gap size between segments
 }) => {
+
+    const groupRef = useRef();
+    const [phase, setPhase] = useState('pause');
+    const timeRef = useRef(0);
+    const rotationRef = useRef(0);
+
+
     const segmentGeometries = useMemo(() => {
         // Calculate outer and inner radii based on base radius and thickness
         const outerRadius = radius + radialThickness / 2;
@@ -260,10 +270,51 @@ const ProgressRing = ({
         return { portions, points };
     }, [radius, radialThickness, height, segments, gap]); // Dependencies for memoization
     
+    const easeInOutQuad = (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+    useFrame((state, delta) => {
+        if (!groupRef.current) return;
+
+        timeRef.current += delta;
+
+        switch(phase) {
+            case 'pause':
+                // Pause for 3 seconds
+                if (timeRef.current >= 5) {
+                    timeRef.current = 0;
+                    setPhase('spinForward');
+                }
+                break;
+
+            case 'spinForward':
+                // Duration for one complete rotation (in seconds)
+                const rotationDuration = 3;
+                
+                // Calculate progress through the rotation (0 to 1)
+                const progress = Math.min(timeRef.current / rotationDuration, 1);
+                
+                // Apply easing to the rotation
+                const easedProgress = easeInOutQuad(progress);
+                const targetRotation = Math.PI * 2 * easedProgress;
+                
+                // Update rotation
+                groupRef.current.rotation.y = targetRotation;
+                
+                // Check if rotation is complete
+                if (progress >= 1) {
+                    timeRef.current = 0;
+                    groupRef.current.rotation.y = 0; // Reset to initial position
+                    setPhase('pause');
+                }
+                break;
+        }
+    });
+
     // Render the ring segments and curved lines
     return (
-      <group rotation={[-Math.PI / 2, 0, 0]}>  {/* Rotate to lay flat */}
-        <OrbitControls enableZoom={true}/>
+      
+        <group rotation={[-Math.PI / 2, 0, 0]} ref={groupRef}>  {/* Rotate to lay flat */}
+        <OrbitControls enableRotate={false} enableZoom={true} enablePan={true} />
         
         {/* Render ring segments */}
         {segmentGeometries.portions.map((segment, index) => (
@@ -295,7 +346,7 @@ const ProgressRing = ({
 };
 
 // Scene Component
-const Scene = () => {
+const MultipleScene = () => {
     const [segmentData, setSegmentData] = useState([
         { progress: 0.3, color: '#8a2be2', text: 'JSX'},
         { progress: 0.3, color: '#404040', text: 'CSS'},
@@ -334,4 +385,4 @@ const Scene = () => {
     </>
     )
 };
-export default Scene;
+export default MultipleScene;

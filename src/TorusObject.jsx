@@ -1,14 +1,18 @@
 import * as THREE from 'three';
-import { Canvas } from '@react-three/fiber';
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { useMemo, useState, useRef } from 'react';
 import { OrbitControls, QuadraticBezierLine, Edges, Float, Text} from '@react-three/drei'
 import { useControls, button, useStoreContext, folder } from 'leva';
+import MainCurvedLines from './curveline';
 
-const CurvedLine = ({ startPoint, angle, length = 0.5, color }) => {
+
+const CurvedLine = ({ startPoint, angle, length = 0.5, color, progress, text }) => {
+    const textAreaRef = useRef()
+
     const points = useMemo(() => {
-    // Start point is where the line connects to the ring
-    const start = new THREE.Vector3(startPoint.x, startPoint.y, startPoint.z);
-    
+        // Start point is where the line connects to the ring
+        const start = new THREE.Vector3(startPoint.x, startPoint.y, startPoint.z);
+        
         // End point is extended outward at an angle (on the same plane as ring)
         const end = new THREE.Vector3(
             startPoint.x + Math.cos(angle) * length * 1.5,
@@ -33,39 +37,47 @@ const CurvedLine = ({ startPoint, angle, length = 0.5, color }) => {
     return (
         <group>
             <QuadraticBezierLine
-              start={points.start}
-              end={points.end}
-              control={points.control}
-              color={color}
-              lineWidth={2}
-              dashed={false}
-            />
-            <mesh position={points.end}>
-                <capsuleGeometry args={[0.06, 0.3, 12, 12]} />
-                <meshBasicMaterial 
-                    color={color}
-                    metalness={0.8}
-                    roughness={0.5}
-                />
-            </mesh>
-            {/* Text label
-            <Text
-                position={[
-                    points.end.x + Math.cos(angle) * 0.15, // Offset from capsule
-                    points.end.y + Math.sin(angle) * 0.15,
-                    points.end.z
-                ]}
-                // rotation={[-Math.PI / 2, 0, -angle]} // Align with view
-                fontSize={0.15}
+                start={points.start}
+                end={points.end}
+                control={points.control}
                 color={color}
-                anchorX="center"
-                anchorY="middle"
-            >
-                {`100%`}
-            </Text> */}
+                lineWidth={2}
+                dashed={false}
+            />
+            
+            {/* Group mesh and text together */}
+            <group position={points.end} ref={textAreaRef}>
+                {/* Mesh as parent */}
+                {/* Adding a helper function to check axis */}
+                <mesh rotation = {[0, 0, 0]} position={[0.00, 0, 0.012]} >
+                    <planeGeometry args={[0.20, 0.50, 64, 64]} />
+                    <meshBasicMaterial 
+                        color={color}
+                        metalness={0.8}
+                        roughness={0.5}
+                        side={THREE.DoubleSide}
+                    />
+                </mesh>
+                {/* <TransformControls object={textAreaRef} /> */}
+                {/* </TransformControls> */}
+                {/* Text as child, positioned relative to the mesh */}
+                <Text
+                    position={[0.0, 0.0, 0.014]} // Adjust to place text slightly above
+                    rotation={[0, 0, -Math.PI/2]}
+                    fontSize={0.1}
+                    fontWeight={500}
+                    fontFamily={"Inter"}
+                    color={"white"}
+                    anchorX="center"
+                    anchorY="middle"
+                >
+                    {progress*100}% {text}
+                </Text>
+            </group>
         </group>
     );
 };
+
 
 
 class SquareRingGeometry extends THREE.BufferGeometry {
@@ -164,6 +176,7 @@ class SquareRingGeometry extends THREE.BufferGeometry {
     }
 }
 
+
 const ProgressRing = ({
     radius = 0.75,
     thickness = 0.3,
@@ -172,12 +185,15 @@ const ProgressRing = ({
     firstSegmentColor = '#8a2be2',
     secondSegmentColor = '#404040',
     segmentData = [
-        { progress: 0.75, color: '#67129b' }, // Purple - 30%
-        { progress: 0.25, color: '#3d4148' }, // Gray - 30%
+        { progress: 0.75, color: '#67129b', text: 'JSX'}, // Purple - 30%
+        { progress: 0.25, color: '#3d4148', text: 'CSS'}, // Gray - 30%
         
     ],
     gap = 0.10 // Gap in radians between segments
   }) => {
+
+    const groupRef = useRef();
+    
     const segmentGeometries = useMemo(() => {
       
         // Calculate total available angle (full circle minus `noOfSegments` gaps)
@@ -208,16 +224,19 @@ const ProgressRing = ({
                 0+thickness/2
             );
 
-            const segment = {
+            // Store segment geometry and color
+            portions.push({
                 geometry: geometry,
                 color: segmentData[i].color
-            }
-            portions.push(segment);
+            });
 
+            // Store points for curved lines
             points.push({
                 point: centerPoint,
                 angle: centerAngle,
-                color: segmentData[i].color
+                color: segmentData[i].color,
+                progress: segmentData[i].progress,
+                text: segmentData[i].text
             });
             
             startAngle += segmentAngle + gap;
@@ -227,24 +246,31 @@ const ProgressRing = ({
             points: points
         };
     }, [radius, thickness, segments, gap]);
+
+    useFrame(() => {
+        groupRef.current.rotation.z = Math.sin(performance.now() * 0.0001);
+    });
   
     return (
     
-      <group rotation={[-Math.PI / 2, 0, 0]}>
+      <group rotation={[-Math.PI / 2, 0, 0]} ref={groupRef}>
 
-        <OrbitControls enableZoom={true}/>
-        {segmentGeometries.portions.map((segment, index) => (
-            <mesh key={index} geometry={segment.geometry}>
-                {/* <Edges color="#a03ed6" /> */}
-                <meshStandardMaterial
-                    side={THREE.DoubleSide}
-                    color={segment.color}
-                    metalness={0.50}
-                    roughness={0.65}
-                    wireframe={false}
-                />
-            </mesh>
-        ))}
+        <OrbitControls enableRotate={false} enableZoom={true} enablePan={true} />
+        
+        <group>
+            {segmentGeometries.portions.map((segment, index) => (
+                <mesh key={index} geometry={segment.geometry}>
+                    {/* <Edges color="#a03ed6" /> */}
+                    <meshStandardMaterial
+                        side={THREE.DoubleSide}
+                        color={segment.color}
+                        metalness={0.50}
+                        roughness={0.65}
+                        wireframe={false}
+                    />
+                </mesh>
+            ))}
+        </group>
         {segmentGeometries.points.map((point, index) => (
             <CurvedLine
                 key={`line-${index}`}
@@ -252,29 +278,21 @@ const ProgressRing = ({
                 angle={point.angle}
                 length={0.5}
                 color={point.color}
+                progress={point.progress}
+                text={point.text}
             />
         ))}
       </group>
     );
-};
-  
-const generateRandomColor = () => {
-    return '#' + Math.floor(Math.random()*16777215).toString(16);
-};
-
-const generateRandomProgress = (segments) => {
-    const rawValues = Array(segments).fill(0).map(() => Math.random());
-    const total = rawValues.reduce((sum, val) => sum + val, 0);
-    return rawValues.map(val => val / total);
 };
 
 
 // Scene Component
 const Scene = () => {
     const [segmentData, setSegmentData] = useState([
-        { progress: 0.4, color: '#8a2be2' },
-        { progress: 0.4, color: '#404040' },
-        { progress: 0.2, color: '#ff4040' },
+        { progress: 0.4, color: '#8a2be2', text: 'JSX'},
+        { progress: 0.4, color: '#404040', text: 'CSS'},
+        { progress: 0.2, color: '#ff4040', text: 'HTML'},
         // { progress: 0.2, color: '#ff4040' }
     ]);
 
@@ -285,12 +303,19 @@ const Scene = () => {
         <directionalLight position={[1,2,3]} intensity={4.5}/>
         <ambientLight intensity={1.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
-        <Float scale={0.75} position={[0, 0.65, 0]} rotation={[0, 0.6, 0]}>
-        <ProgressRing 
-                segmentData={segmentData}
-                noOfSegments={numberOfSegments}
-            />
-        </Float>
+        <group>
+            <MainCurvedLines />
+        </group>
+        <group position={[0, 0, 0]} rotation={[0, Math.PI, 0]}>
+            <MainCurvedLines />
+        </group>
+        <group position={[0, 0, 0]} rotation={[0, 0, 0]}>
+                <ProgressRing 
+                    segmentData={segmentData}
+                    noOfSegments={numberOfSegments}
+                />
+            </group>
+
       </>
     );
 };
