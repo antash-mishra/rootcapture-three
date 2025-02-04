@@ -369,12 +369,12 @@ const MultipleScene = () => {
         <group>
             <MainCurvedLines />
         </group>
-        <group position={[0, 0, 0]} rotation={[0, Math.PI, 0]}>
+        {/* <group position={[0, 0, 0]} rotation={[0, Math.PI, 0]}>
             <MainCurvedLines />
-        </group>
+        </group> */}
         
         {/* <Float scale={0.75} position={[0, 0.65, 0]} rotation={[0, 0.6, 0]}> */}
-            <group ref={objRef} rotation={[0, Math.PI/2, Math.PI/2]} position={[0, 0, 0]}>
+            <group ref={objRef} rotation={[0, Math.PI/2, Math.PI/12]} position={[0, 0, 0]}>
                 <ProgressRing 
                     segmentData={segmentData}
                     noOfSegments={numberOfSegments}

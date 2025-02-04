@@ -92,7 +92,7 @@ function App() {
                     fov: 45,
                     near: 0,
                     far: 1000,
-                    zoom: 260
+                    zoom: 300
                 }}
             >
 
