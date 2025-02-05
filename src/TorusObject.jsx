@@ -245,7 +245,7 @@ const ProgressRing = ({
             portions: portions,
             points: points
         };
-    }, [radius, thickness, segments, gap]);
+    }, [radius, thickness, segments, gap, segmentData]);
 
     useFrame(() => {
         groupRef.current.rotation.z = Math.sin(performance.now() * 0.0001);
@@ -296,7 +296,120 @@ const Scene = () => {
         // { progress: 0.2, color: '#ff4040' }
     ]);
 
-    const numberOfSegments = segmentData.length;
+    const [segmentLength, setSegmentLength] = useState(3);
+
+    // Store the controls schema separately
+    // State for temporary working data
+    const [tempSegmentData, setTempSegmentData] = useState([...segmentData]);
+
+    // Store the controls schema separately
+    const createSegmentControls = (segments) => {
+        const controls = {};
+        segments.forEach((segment, index) => {
+            controls[`Segment ${index + 1}`] = folder({
+                [`progress_${index}`]: {
+                    value: segment.progress * 100,
+                    min: 0,
+                    max: 100,
+                    step: 1,
+                    label: 'Progress (%)',
+                    onChange: (value) => {
+                        setTempSegmentData(prevData => {
+                            const newData = [...prevData];
+                            newData[index] = { ...newData[index], progress: value / 100 };
+                            return newData;
+                        });
+                    }
+                },
+                [`color_${index}`]: {
+                    value: segment.color,
+                    label: 'Color',
+                    onChange: (value) => {
+                        setTempSegmentData(prevData => {
+                            const newData = [...prevData];
+                            newData[index] = { ...newData[index], color: value };
+                            return newData;
+                        });
+                    }
+                },
+                [`text_${index}`]: {
+                    value: segment.text || '',
+                    label: 'Label',
+                    onChange: (value) => {
+                        setTempSegmentData(prevData => {
+                            const newData = [...prevData];
+                            newData[index] = { ...newData[index], text: value };
+                            return newData;
+                        });
+                    }
+                }
+            });
+        });
+        return controls;
+    };
+
+    // Initial configuration controls
+    const { numberOfSegments } = useControls('Ring Configuration', {
+        numberOfSegments: {
+            value: 3,
+            min: 1,
+            max: 10,
+            step: 1,
+            label: 'Number of Segments',
+            onChange: (value) => {
+                setSegmentLength(value);
+            }
+        },
+        'Create Segments': button(() => {
+            const equalProgress = 1 / segmentLength;
+            const newSegments = Array(segmentLength).fill(null).map(() => ({
+                progress: equalProgress,
+                color: '#000000',
+                text: ''
+            }));
+            console.log('Creating segments with length:', segmentLength);
+            setTempSegmentData(newSegments);
+            setSegmentData(newSegments);
+        })
+    }, {collapsed: true}, [segmentLength]); // Add dependency to update control when segmentLength changes
+
+    // Use useEffect to monitor segmentLength changes
+    // useEffect(() => {
+    //     console.log('Segment length updated:', segmentLength);
+    // }, [segmentLength]);
+
+    // Calculate total progress from temporary data
+    const totalProgress = tempSegmentData.reduce((sum, segment) => sum + segment.progress, 0);
+
+    // Dynamic segment controls that update when tempSegmentData changes
+    useControls(
+        'Segment Controls', 
+        createSegmentControls(tempSegmentData),
+        { collapsed: true },
+        [tempSegmentData, numberOfSegments]
+    );
+
+    // Validation controls with auto-update
+    useControls('Actions', {
+        'Total Progress': {
+            value: (totalProgress * 100).toFixed(1) + '%',
+            editable: false,
+            label: 'Total Progress'
+        },
+        'Status': {
+            value: Math.abs(totalProgress - 1) <= 0.01 ? '✅ Valid' : '❌ Must equal 100%',
+            editable: false
+        },
+        'Apply Changes': button(() => {
+            if (Math.abs(totalProgress - 1) > 0.01) {
+                alert(`Total progress must equal 100%. Current total: ${(totalProgress * 100).toFixed(1)}%`);
+                return;
+            }
+            // Only update the actual segment data when applying changes
+            setSegmentData([...tempSegmentData]);
+        }),
+        
+    }, {collapsed: true}, [tempSegmentData]); // Update based on temporary data    
 
     return (
       <>
@@ -312,7 +425,7 @@ const Scene = () => {
         <group position={[0, 0, 0]} rotation={[0, 0, 0]}>
                 <ProgressRing 
                     segmentData={segmentData}
-                    noOfSegments={numberOfSegments}
+                    noOfSegments={segmentLength}
                 />
             </group>
 
