@@ -4,7 +4,6 @@ import { useFrame } from '@react-three/fiber';
 import { OrbitControls, TransformControls, QuadraticBezierLine,Html, Text, Line} from '@react-three/drei'
 import MainCurvedLines from './curveline';
 import { useSpring, animated, config } from '@react-spring/three';
-
 import { useControls, button, useStoreContext, folder } from 'leva';
 
 const CurvedLine = ({ startPoint, angle, length = 0.5, color, progress, text }) => {
@@ -432,10 +431,6 @@ const MultipleScene = () => {
         })
     }, {collapsed: true}, [segmentLength]); // Add dependency to update control when segmentLength changes
 
-    // Use useEffect to monitor segmentLength changes
-    // useEffect(() => {
-    //     console.log('Segment length updated:', segmentLength);
-    // }, [segmentLength]);
 
     // Calculate total progress from temporary data
     const totalProgress = tempSegmentData.reduce((sum, segment) => sum + segment.progress, 0);

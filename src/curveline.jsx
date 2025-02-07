@@ -53,10 +53,3 @@ export default function MainCurvedLines() {
     </>
   );
 }
-
-
-// Server URL: wss://livekit.corrodedlabs.com
-// API Key: APIFz4zJabyCdnY
-// API Secret: k72Dc8d41SsYRChA06C4a8u3XuqztLrmrYwU3XlmQGD
-// 
-// Here's a test token generated with your keys: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzQ0OTU4MjEsImlzcyI6IkFQSUZ6NHpKYWJ5Q2RuWSIsIm5hbWUiOiJUZXN0IFVzZXIiLCJuYmYiOjE3Mzg0OTU4MjEsInN1YiI6InRlc3QtdXNlciIsInZpZGVvIjp7InJvb20iOiJteS1maXJzdC1yb29tIiwicm9vbUpvaW4iOnRydWV9fQ.aCha4o_rsJfExNTZv_WjnPFwIFW67daGL2RgzvTXdMo
